@@ -1,0 +1,74 @@
+name: Bug report
+description: Report a reproducible problem
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: Never include credentials, private keys, host keys, private addresses, or unredacted logs.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Release version or commit hash
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Android version/device and target OS/architecture
+    validations:
+      required: true
+  - type: dropdown
+    id: route
+    attributes:
+      label: Route
+      options:
+        - Direct
+        - Jump host
+        - Not connection-related
+    validations:
+      required: true
+  - type: dropdown
+    id: authentication
+    attributes:
+      label: Authentication
+      options:
+        - Password
+        - Hardware-backed key
+        - Not authentication-related
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      placeholder: "1. …\n2. …\n3. …"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Sanitized diagnostics
+      description: Add only the smallest relevant, redacted log excerpt or screenshot.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues.
+          required: true
+        - label: I removed secrets and private infrastructure details.
+          required: true
