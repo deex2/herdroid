@@ -9,7 +9,7 @@ license is bundled at `res/raw/cascadia_mono_license.txt`; source:
 https://github.com/microsoft/cascadia-code
 
 This file accompanies distributed Herdroid APKs and bridge binaries. Android
-license selection and release runtime versions were audited on 2026-08-19.
+license selection and release runtime versions were audited on 2026-08-30.
 The bundled bridge Rust package inventory was audited against `cargo tree` on
 2026-08-19. Re-run the corresponding audit after any dependency change.
 
@@ -18,7 +18,7 @@ The bundled bridge Rust package inventory was audited against `cargo tree` on
 | Component | Resolved version | License |
 |---|---:|---|
 | SSHJ | 0.40.0 | Apache-2.0; upstream NOTICE reproduced below |
-| Bouncy Castle `bcprov`, `bcpkix`, `bcutil` | 1.80.2 | MIT |
+| Bouncy Castle `bcprov`, `bcpkix`, `bcutil` | 1.84 | MIT |
 | ConnectBot termlib | 0.1.0 | Apache-2.0 |
 | SQLCipher for Android | 4.17.0 | BSD-3-Clause; text reproduced below |
 | AndroidX, Compose, Room, SQLite, Material | resolved Gradle graph | Apache-2.0 |
@@ -70,9 +70,9 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-### Bouncy Castle 1.80.2
+### Bouncy Castle 1.84
 
-Copyright (c) 2000-2024 The Legion of the Bouncy Castle Inc.
+Copyright (c) 2000-2026 The Legion of the Bouncy Castle Inc.
 (https://www.bouncycastle.org).
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
