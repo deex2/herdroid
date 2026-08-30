@@ -11,7 +11,7 @@ import dev.herdroid.session.api.ConnectionState
 import dev.herdroid.session.api.TerminalAttachRequest
 import dev.herdroid.session.api.TerminalLease
 import kotlinx.coroutines.flow.FlowCollector
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.ExperimentalForInheritanceCoroutinesApi
 import kotlinx.coroutines.flow.StateFlow
 
 @Singleton
@@ -43,7 +43,7 @@ internal class ProcessConnectionSession @Inject constructor(
     )
 }
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalForInheritanceCoroutinesApi::class)
 private fun <T, R> StateFlow<T>.mapState(transform: (T) -> R): StateFlow<R> =
     object : StateFlow<R> {
         override val value: R get() = transform(this@mapState.value)

@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalForInheritanceCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.StateFlow
@@ -219,6 +220,7 @@ class FakeKeyVault(
     }
 }
 
+@OptIn(ExperimentalForInheritanceCoroutinesApi::class)
 private class CountingStateFlow<T>(
     private val delegate: StateFlow<T>,
     private val activeCollectors: AtomicInteger,

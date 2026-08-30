@@ -11,6 +11,7 @@ import dev.herdroid.core.ssh.HardwareKeyOperations
 import dev.herdroid.core.ssh.keys.SshPublicKeyCodec
 import java.util.Base64
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
@@ -134,6 +135,7 @@ class SshKeyVaultTest {
         assertTrue(repository.rows.value.isEmpty())
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     private fun TestScope.vault(
         repository: FakeMetadataRepository,
         hardware: FakeHardware = FakeHardware(),

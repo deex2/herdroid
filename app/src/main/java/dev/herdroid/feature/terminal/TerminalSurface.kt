@@ -1,5 +1,6 @@
 package dev.herdroid.feature.terminal
 
+import android.content.ClipData
 import android.view.View
 import android.view.ViewTreeObserver
 import androidx.compose.foundation.background
@@ -23,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,11 +32,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -44,6 +46,7 @@ import dev.herdroid.core.model.TerminalScrollDirection
 import dev.herdroid.core.model.TerminalScrollSource
 import dev.herdroid.core.model.TerminalState
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 import org.connectbot.terminal.SelectionController
 import org.connectbot.terminal.Terminal
 import org.connectbot.terminal.TerminalEmulatorFactory
@@ -78,7 +81,8 @@ fun TerminalSurface(
     val focusRequester = remember(attachmentKey) { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     val emulator = remember(attachmentKey) {
         TerminalEmulatorFactory.create(
             initialRows = 24,
@@ -201,13 +205,13 @@ fun TerminalSurface(
                 },
                 onCopy = {
                     selection?.copySelection()?.takeIf(String::isNotEmpty)?.let {
-                        clipboard.setText(AnnotatedString(it))
+                        scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("Terminal selection", it))) }
                         selection?.clearSelection()
                         selectionActive = false
                     }
                 },
                 onPaste = {
-                    clipboard.getText()?.text?.let(onSendText)
+                    scope.launch { clipboard.getClipEntry()?.clipData?.getItemAt(0)?.text?.toString()?.let(onSendText) }
                 },
                 onPageUp = {
                     onScroll(
