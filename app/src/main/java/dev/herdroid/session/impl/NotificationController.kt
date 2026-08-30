@@ -13,9 +13,10 @@ import dev.herdroid.navigation.AppNotificationTargetIntentFactory
 import dev.herdroid.session.api.ConnectionState
 import dev.herdroid.session.api.resolve
 
-fun shouldAlert(previous: AgentStatus?, next: AgentStatus, liveEpoch: Boolean) =
-    liveEpoch && previous != null && previous != next &&
-        (next == AgentStatus.Blocked || next == AgentStatus.Done)
+private fun shouldAlert(previous: AgentStatus, next: AgentStatus, allowIdle: Boolean) =
+    previous != next &&
+        (next == AgentStatus.Blocked || next == AgentStatus.Done ||
+            allowIdle && previous == AgentStatus.Working && next == AgentStatus.Idle)
 
 internal class NotificationReconciler {
     private data class PaneKey(val session: String, val paneId: String)
@@ -29,9 +30,15 @@ internal class NotificationReconciler {
     )
 
     private var routeId: Long? = null
+    private var allowIdle = false
     private val versions = mutableMapOf<String, SessionVersion>()
     private val retiredEpochs = mutableMapOf<String, MutableSet<String>>()
     private val seen = mutableMapOf<PaneKey, SeenPane>()
+
+    @Synchronized
+    fun allowIdle(value: Boolean) {
+        allowIdle = value
+    }
 
     @Synchronized
     fun reconcile(state: ConnectionState): List<AgentAlert> {
@@ -75,7 +82,12 @@ internal class NotificationReconciler {
                 it.epoch == next.epoch && it.baseline == next.baseline &&
                     it.workspaceId == next.workspaceId && it.tabId == next.tabId
             } == true
-            if (sameIdentity && shouldAlert(requireNotNull(previous).status, pane.agentStatus, liveEpoch = true)) {
+            if (sameIdentity && shouldAlert(
+                    requireNotNull(previous).status,
+                    pane.agentStatus,
+                    allowIdle = allowIdle,
+                )
+            ) {
                 val target = AgentAlert(
                     OpenTargetIdentifiers(
                         connected.routeId,
@@ -124,6 +136,9 @@ internal class NotificationFeed(private val reconciler: NotificationReconciler =
         enabled = false
         reconciler.reconcile(ConnectionState.Disconnected)
     }
+
+    @Synchronized
+    fun visible(value: Boolean) = reconciler.allowIdle(!value)
 
     @Synchronized
     fun reconcile(state: ConnectionState.Connected): List<AgentAlert> =
@@ -193,6 +208,9 @@ internal class NotificationController(
 
     @Synchronized
     override fun disable() = feed.disable()
+
+    @Synchronized
+    fun visible(value: Boolean) = feed.visible(value)
 
     @Synchronized
     private fun notificationId(target: OpenTargetIdentifiers) = notificationIds.getOrPut(
