@@ -52,6 +52,7 @@ android {
     }
 
     buildFeatures.compose = true
+    packaging.resources.pickFirsts += "META-INF/LICENSE.md"
 
     val sharedTest = "src/sharedTest/java"
     sourceSets {
@@ -118,7 +119,7 @@ dependencies {
 
     constraints {
         implementation("org.bouncycastle:bcprov-jdk18on") {
-            version { strictly(libs.versions.bouncycastle.get()) }
+            version { strictly(libs.versions.bouncycastleProvider.get()) }
         }
         implementation("org.bouncycastle:bcpkix-jdk18on") {
             version { strictly(libs.versions.bouncycastle.get()) }
