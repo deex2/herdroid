@@ -12,8 +12,8 @@ internal data class NotificationOpenPayload(
     val status: AgentStatus,
 )
 
-internal fun NotificationOpenPayload.toIntent(context: Context) = Intent(context, MainActivity::class.java)
-    .setAction(ACTION_OPEN)
+internal fun NotificationOpenPayload.toIntent(context: Context) = Intent(ACTION_OPEN)
+    .setClass(context, MainActivity::class.java)
     .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
     .putExtras(toBundle())
 
