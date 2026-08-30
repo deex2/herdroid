@@ -18,7 +18,7 @@ The bundled bridge Rust package inventory was audited against `cargo tree` on
 | Component | Resolved version | License |
 |---|---:|---|
 | SSHJ | 0.40.0 | Apache-2.0; upstream NOTICE reproduced below |
-| Bouncy Castle `bcprov`, `bcpkix`, `bcutil` | 1.84 | MIT |
+| Bouncy Castle `bcprov` / `bcpkix`, `bcutil` | 1.85.2 / 1.85 | MIT |
 | ConnectBot termlib | 0.1.0 | Apache-2.0 |
 | SQLCipher for Android | 4.17.0 | BSD-3-Clause; text reproduced below |
 | AndroidX, Compose, Room, SQLite, Material | resolved Gradle graph | Apache-2.0 |
@@ -70,7 +70,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-### Bouncy Castle 1.84
+### Bouncy Castle 1.85.2 / 1.85
 
 Copyright (c) 2000-2026 The Legion of the Bouncy Castle Inc.
 (https://www.bouncycastle.org).
