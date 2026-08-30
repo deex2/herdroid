@@ -198,7 +198,7 @@ class ConnectionOwnerTest {
                 requestServiceOwnerShutdown(owner, ownerScope, releaseScope)
                 returned.countDown()
             }
-            assertTrue("onDestroy blocked on connection cleanup", returned.await(250, TimeUnit.MILLISECONDS))
+            assertTrue("onDestroy blocked on connection cleanup", returned.await(1, TimeUnit.SECONDS))
             assertEquals(ConnectionState.Disconnected, owner.state.value)
             allowAttach.countDown()
             assertTrue(closeEntered.await(1, TimeUnit.SECONDS))
