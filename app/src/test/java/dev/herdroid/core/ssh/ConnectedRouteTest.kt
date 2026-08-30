@@ -201,7 +201,7 @@ class ConnectedRouteTest {
     private fun <T> proxy(type: Class<T>, answer: (java.lang.reflect.Method, Array<out Any?>?) -> Any?): T =
         type.cast(Proxy.newProxyInstance(type.classLoader, arrayOf(type)) { _, method, args ->
             answer(method, args)
-        })
+        })!!
 
     private fun defaultValue(type: Class<*>): Any? = when (type) {
         Boolean::class.javaPrimitiveType -> false
