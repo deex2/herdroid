@@ -23,8 +23,6 @@ import java.io.IOException
 import java.lang.reflect.Proxy
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
@@ -32,6 +30,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
@@ -44,6 +43,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.yield
 import kotlinx.coroutines.withTimeout
@@ -200,36 +201,35 @@ class TerminalViewModelTest {
     @Test
     fun `ViewModelStore clear closes lease returned during cancellation exactly once`() = runTest {
         val callerJob = SupervisorJob()
-        val callerScope = CoroutineScope(callerJob + kotlinx.coroutines.test.StandardTestDispatcher(testScheduler))
-        val attachEntered = CountDownLatch(1)
-        val allowAttachReturn = CountDownLatch(1)
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val callerScope = CoroutineScope(callerJob + dispatcher)
+        val allowAttachReturn = CompletableDeferred<Unit>()
         val client = ClientHarness()
         val viewModel = TerminalViewModel(
             state = MutableStateFlow(ConnectionState.Connected(7, mapOf("work" to session()))),
             actions = unavailableActions(),
             attach = { _, _, _, _, _ ->
-                attachEntered.countDown()
-                check(allowAttachReturn.await(2, TimeUnit.SECONDS))
+                withContext(NonCancellable) { allowAttachReturn.await() }
                 client.lease
             },
             scope = callerScope,
-            ioDispatcher = Dispatchers.IO,
+            ioDispatcher = dispatcher,
         )
         viewModel.addCloseable(AutoCloseable { callerScope.cancel() })
         val store = ViewModelStore().also { it.put("terminal", viewModel) }
         try {
             runCurrent()
-            assertEquals(true, attachEntered.await(1, TimeUnit.SECONDS))
 
             store.clear()
-            allowAttachReturn.countDown()
-            withTimeout(2_000) { callerJob.join() }
+            allowAttachReturn.complete(Unit)
+            advanceUntilIdle()
 
+            assertEquals(true, callerJob.isCompleted)
             assertEquals(1, client.closeCount.get())
             viewModel.close()
             assertEquals(1, client.closeCount.get())
         } finally {
-            allowAttachReturn.countDown()
+            allowAttachReturn.complete(Unit)
             store.clear()
             callerScope.cancel()
         }
