@@ -539,8 +539,8 @@ private fun EndpointFields(
     )
     if (showHerdrPath) {
         LabeledTextField(
-            "Herdr executable",
-            "$title Herdr executable input",
+            "Herdr executable (optional)",
+            "$title Herdr executable optional input",
             value.herdrPath,
             { onValueChange(value.copy(herdrPath = it)) },
             Modifier.fillMaxWidth(),
