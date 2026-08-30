@@ -13,7 +13,7 @@ class SshDependencyPolicyTest {
         val catalog = repository.resolve("gradle/libs.versions.toml").readText()
 
         assertTrue(appBuild.contains("implementation(libs.sshj)"))
-        assertTrue(catalog.contains("bouncycastle = \"1.80.2\""))
+        assertTrue(catalog.contains("bouncycastle = \"1.84\""))
         listOf("bcprov-jdk18on", "bcpkix-jdk18on", "bcutil-jdk18on").forEach { module ->
             assertTrue(
                 Regex(
