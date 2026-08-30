@@ -177,10 +177,12 @@ class ConnectionService : Service() {
 
     override fun onBind(intent: Intent?): IBinder {
         ownership.bound()
+        notifications.visible(true)
         return binder
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
+        notifications.visible(false)
         ownership.unbound()
         return false
     }

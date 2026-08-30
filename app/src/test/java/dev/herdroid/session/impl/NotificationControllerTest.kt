@@ -104,6 +104,19 @@ class NotificationControllerTest {
     }
 
     @Test
+    fun `working to idle alerts only while the app is hidden`() {
+        val feed = NotificationFeed()
+        feed.promote()
+        feed.visible(false)
+        feed.reconcile(connected(session(AgentStatus.Working)))
+
+        assertEquals(AgentStatus.Idle, feed.reconcile(connected(session(AgentStatus.Idle))).single().status)
+        feed.visible(true)
+        feed.reconcile(connected(session(AgentStatus.Working)))
+        assertEquals(emptyList<AgentAlert>(), feed.reconcile(connected(session(AgentStatus.Idle))))
+    }
+
+    @Test
     fun `service owner wires accepted foreground into ordered coordinator transitions`() = runBlocking {
         val sink = RecordingNotificationSink()
         var activityBound = true
