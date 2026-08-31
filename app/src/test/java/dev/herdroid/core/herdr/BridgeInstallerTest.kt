@@ -10,6 +10,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -546,7 +547,7 @@ class BridgeInstallerTest {
     }
 
     @Test
-    fun `manifest read and binary hash run concurrently`() = runBlocking {
+    fun `manifest read and binary hash run concurrently`() = runTest {
         val root = priorRoot("0.1.0")
         val remote = RecordingTransport(
             listOf(
