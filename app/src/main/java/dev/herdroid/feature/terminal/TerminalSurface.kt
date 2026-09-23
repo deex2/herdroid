@@ -28,14 +28,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.ViewCompat
@@ -78,9 +75,6 @@ fun TerminalSurface(
     val keyboardVisible = viewImeVisible(attachmentKey)
     var selection by remember(attachmentKey) { mutableStateOf<SelectionController?>(null) }
     var selectionActive by remember(attachmentKey) { mutableStateOf(false) }
-    val focusRequester = remember(attachmentKey) { FocusRequester() }
-    val keyboard = LocalSoftwareKeyboardController.current
-    val focusManager = LocalFocusManager.current
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
     val emulator = remember(attachmentKey) {
@@ -112,8 +106,6 @@ fun TerminalSurface(
             if (showAfterExplicitHide) {
                 showAfterExplicitHide = false
                 keyboardRequested = true
-                runCatching { focusRequester.requestFocus() }
-                keyboard?.show()
             }
         }
     }
@@ -126,16 +118,12 @@ fun TerminalSurface(
             terminalShowCompleted = false
             keyboardRequested = true
         }
-        runCatching { focusRequester.requestFocus() }
-        keyboard?.show()
     }
 
     fun hideKeyboard() {
         explicitHidePending = keyboardVisible
         showAfterExplicitHide = false
         keyboardRequested = false
-        keyboard?.hide()
-        focusManager.clearFocus()
     }
 
     LaunchedEffect(attachmentKey, switcherOpen) {
@@ -159,9 +147,8 @@ fun TerminalSurface(
                 Terminal(
                     terminalEmulator = emulator,
                     modifier = Modifier.fillMaxSize().passiveTerminalTap(::showKeyboard),
-                    keyboardEnabled = true,
-                    showSoftKeyboard = keyboardRequested || keyboardVisible,
-                    focusRequester = focusRequester,
+                    keyboardEnabled = !switcherOpen,
+                    showSoftKeyboard = keyboardRequested || (keyboardVisible && !explicitHidePending),
                     modifierManager = modifiers,
                     onTerminalTap = ::showKeyboard,
                     onImeVisibilityChanged = { terminalShowCompleted = it },
