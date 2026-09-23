@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.herdroid.core.ui.HerdroidTheme
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -62,6 +63,9 @@ class TerminalRouteTest {
             compose.waitUntil(5_000) { compose.activity.isImeVisible() && keyBarVisible() }
             compose.onNodeWithContentDescription("Hide keyboard").performClick()
             compose.waitUntil(5_000) { !compose.activity.isImeVisible() && !keyBarVisible() }
+            compose.runOnIdle { assertTrue(compose.activity.currentFocus?.onCheckIsTextEditor() == true) }
+            compose.onNodeWithContentDescription("Show keyboard").performClick()
+            compose.waitUntil(5_000) { compose.activity.isImeVisible() && keyBarVisible() }
         } finally {
             harness.close()
         }

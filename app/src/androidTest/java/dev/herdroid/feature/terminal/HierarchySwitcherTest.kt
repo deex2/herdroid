@@ -452,7 +452,7 @@ class HierarchySwitcherTest {
     }
 
     @Test
-    fun terminal_surface_restores_keyboard_state_after_switcher_closes() {
+    fun terminal_surface_blocks_input_and_restores_keyboard_after_switcher_closes() {
         val harness = TerminalClientHarness()
         val replacement = TerminalClientHarness()
         val hiddenReplacement = TerminalClientHarness()
@@ -483,9 +483,21 @@ class HierarchySwitcherTest {
             }
 
             compose.waitUntil(5_000) { compose.activity.isImeVisible() }
+            compose.runOnIdle {
+                assertTrue(compose.activity.currentFocus?.onCheckIsTextEditor() == true)
+                compose.activity.currentFocus?.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+                compose.activity.currentFocus?.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+            }
+            assertEquals("\r", harness.stdin.toByteArray().decodeToString())
+            harness.stdin.reset()
             compose.runOnIdle { switcherOpen.value = true }
             compose.waitUntil(5_000) { !compose.activity.isImeVisible() }
             compose.onNodeWithContentDescription("Scrollable terminal keys").assertDoesNotExist()
+            compose.runOnIdle {
+                compose.activity.currentFocus?.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+                compose.activity.currentFocus?.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+            }
+            assertEquals("", harness.stdin.toByteArray().decodeToString())
 
             compose.runOnIdle { client.value = null }
             compose.waitForIdle()
