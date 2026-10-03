@@ -382,6 +382,32 @@ class BridgeInstallerTest {
     }
 
     @Test
+    fun `automatic launch resolves Herdr instead of using the cached path`() {
+        val installer = BridgeInstaller(RecordingTransport(emptyList()), trustedCatalog())
+        val command = installer.launchCommand(
+            BridgeLaunchDescriptor(
+                BridgeArtifactCatalog.WINDOWS_X64,
+                RemoteOperatingSystem.WINDOWS,
+                "x86_64",
+                "C:\\old\\herdr.exe",
+                "C:\\Users\\a\\herdroid-bridge.exe",
+            ),
+            null,
+        )
+        val decoded = String(
+            java.util.Base64.getDecoder().decode(command.substringAfterLast(' ')),
+            Charsets.UTF_16LE,
+        )
+
+        assertEquals(
+            "\$herdr=(Get-Command herdr -ErrorAction Stop).Source;" +
+                "& 'C:\\Users\\a\\herdroid-bridge.exe' '--stdio' '--herdr-bin' \$herdr",
+            decoded,
+        )
+        assertFalse(decoded.contains("C:\\old\\herdr.exe"))
+    }
+
+    @Test
     fun `compatible stock bridge verifies its hash without downloading the binary`() = runBlocking {
         val root = "/home/a/.herdroid/plugins/dev.herdroid.bridge/0.1.0/$linuxTarget"
         val remote = RecordingTransport(

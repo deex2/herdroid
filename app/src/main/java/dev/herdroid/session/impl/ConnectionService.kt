@@ -271,7 +271,7 @@ class ConnectionService : Service() {
         connectRoute = { routeInput, targetKnownHosts, jumpKnownHosts ->
             val routeId = routeInput.routeId
             val routeName = routeInput.routeName
-            val herdrPath = routeInput.target.herdrPath
+            val configuredHerdrPath = routeInput.target.herdrPath
             val bridgeCache = routeInput.target.bridgeCache
             val connected = sshConnector.connect(routeInput.toSshInput(), targetKnownHosts, jumpKnownHosts)
 
@@ -289,7 +289,7 @@ class ConnectionService : Service() {
                 timeoutMillis: Long = 15_000,
             ): ConnectionActiveBridge {
                 val client = BridgeClient.start(
-                    connected.exec(installer.launchCommand(descriptor)),
+                    connected.exec(installer.launchCommand(descriptor, configuredHerdrPath)),
                     BridgeExpectation(
                         descriptor.os,
                         descriptor.architecture,
@@ -313,7 +313,7 @@ class ConnectionService : Service() {
                         TerminalClient.attach(
                             connected,
                             descriptor.os,
-                            descriptor.herdrPath,
+                            configuredHerdrPath,
                             session,
                             pane,
                             cols,
@@ -330,7 +330,7 @@ class ConnectionService : Service() {
                 prepareBridge = {
                     val catalog = loadCatalog()
                     val installer = BridgeInstaller(ConnectedRouteBridgeTransport(connected, ioDispatcher), catalog)
-                    val discovery = installer.discover(herdrPath) as? DiscoveryResult.Ready
+                    val discovery = installer.discover(configuredHerdrPath) as? DiscoveryResult.Ready
                         ?: throw TerminalConnectionFailure("herdr_missing", "Herdr was not found on the selected route")
                     val installPlan = installer.preview(routeName, discovery.os, discovery.architecture)
                     val preview = installPlan.approval

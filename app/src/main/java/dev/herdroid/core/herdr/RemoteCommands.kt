@@ -53,13 +53,33 @@ object RemoteCommands {
         )
     }
 
-    fun herdr(os: RemoteOperatingSystem, path: String, vararg arguments: String): String = when (os) {
-        RemoteOperatingSystem.LINUX -> posix(path, *arguments)
-        RemoteOperatingSystem.WINDOWS -> powerShell("& ${powerShellLiteral(path)} ${arguments.joinToString(" ") { powerShellLiteral(it) }}")
+    fun herdr(os: RemoteOperatingSystem, path: String?, vararg arguments: String): String = when {
+        path != null -> when (os) {
+            RemoteOperatingSystem.LINUX -> posix(path, *arguments)
+            RemoteOperatingSystem.WINDOWS -> powerShell("& ${powerShellLiteral(path)} ${arguments.joinToString(" ") { powerShellLiteral(it) }}")
+        }
+        os == RemoteOperatingSystem.LINUX -> {
+            val script = "set -e; herdr=\$(command -v herdr); exec \"\$herdr\" ${posix(*arguments)}"
+            "sh -lc ${posix(script)}"
+        }
+        else -> powerShell(
+            "\$herdr=(Get-Command herdr -ErrorAction Stop).Source;" +
+                "& \$herdr ${arguments.joinToString(" ") { powerShellLiteral(it) }}",
+        )
     }
 
-    fun bridge(os: RemoteOperatingSystem, binary: String, herdrPath: String): String =
-        herdr(os, binary, "--stdio", "--herdr-bin", herdrPath)
+    fun bridge(os: RemoteOperatingSystem, binary: String, herdrPath: String?): String = when {
+        herdrPath != null -> herdr(os, binary, "--stdio", "--herdr-bin", herdrPath)
+        os == RemoteOperatingSystem.LINUX -> {
+            val script =
+                "set -e; herdr=\$(command -v herdr); exec ${posix(binary, "--stdio", "--herdr-bin")} \"\$herdr\""
+            "sh -lc ${posix(script)}"
+        }
+        else -> powerShell(
+            "\$herdr=(Get-Command herdr -ErrorAction Stop).Source;" +
+                "& ${powerShellLiteral(binary)} '--stdio' '--herdr-bin' \$herdr",
+        )
+    }
 
     fun makeDirectory(os: RemoteOperatingSystem, path: String): String = when (os) {
         RemoteOperatingSystem.LINUX -> "mkdir -p ${posix(path)}"

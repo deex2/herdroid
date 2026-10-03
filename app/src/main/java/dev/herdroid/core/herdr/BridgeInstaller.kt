@@ -302,8 +302,10 @@ class BridgeInstaller(
 
     fun launchCommand(install: VerifiedInstall): String = launchCommand(launchDescriptor(install))
 
-    fun launchCommand(descriptor: BridgeLaunchDescriptor): String =
-        RemoteCommands.bridge(descriptor.os, descriptor.bridgePath, descriptor.herdrPath)
+    fun launchCommand(
+        descriptor: BridgeLaunchDescriptor,
+        herdrPath: String? = descriptor.herdrPath,
+    ): String = RemoteCommands.bridge(descriptor.os, descriptor.bridgePath, herdrPath)
 
     private fun approved(plan: BridgeInstallPlan): BridgeApproval {
         require(plan.owner === this) { "Bridge install plan belongs to another installer" }
