@@ -107,6 +107,29 @@ class TerminalClientTest {
     }
 
     @Test
+    fun `automatic takeover resolves the current Windows Herdr executable`() {
+        val command = TerminalClient.command(
+            RemoteOperatingSystem.WINDOWS,
+            null,
+            "work",
+            "p1",
+            80,
+            24,
+            true,
+        )
+
+        assertEquals(
+            "\$herdr=(Get-Command herdr -ErrorAction Stop).Source;" +
+                "& \$herdr '--session' 'work' 'terminal' 'session' 'control' 'p1' " +
+                "'--cols' '80' '--rows' '24' '--takeover'",
+            String(
+                java.util.Base64.getDecoder().decode(command.substringAfterLast(' ')),
+                Charsets.UTF_16LE,
+            ),
+        )
+    }
+
+    @Test
     fun `EOF and closed before first frame are attach failures with opaque diagnostics`() = runBlocking {
         val eof = Harness()
         val eofClient = eof.client()

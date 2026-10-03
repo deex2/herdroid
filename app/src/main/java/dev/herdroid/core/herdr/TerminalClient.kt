@@ -232,7 +232,7 @@ class TerminalClient private constructor(
         fun attach(
             route: ConnectedRoute,
             remoteOs: RemoteOperatingSystem,
-            herdrPath: String,
+            herdrPath: String?,
             session: String,
             pane: String,
             cols: Int,
@@ -254,14 +254,14 @@ class TerminalClient private constructor(
 
         internal fun command(
             remoteOs: RemoteOperatingSystem,
-            herdrPath: String,
+            herdrPath: String?,
             session: String,
             pane: String,
             cols: Int,
             rows: Int,
             takeover: Boolean,
         ): String {
-            require(herdrPath.isNotBlank()) { "Invalid Herdr path" }
+            require(herdrPath == null || herdrPath.isNotBlank()) { "Invalid Herdr path" }
             require(BridgeIdentifiers.validSession(session)) { "Invalid session id" }
             require(BridgeIdentifiers.validPane(pane)) { "Invalid pane id" }
             val arguments = mutableListOf(
