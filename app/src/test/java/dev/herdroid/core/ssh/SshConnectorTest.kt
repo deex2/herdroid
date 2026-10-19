@@ -22,6 +22,7 @@ import net.schmizz.sshj.transport.verification.HostKeyVerifier
 import net.schmizz.sshj.userauth.UserAuthException
 import net.schmizz.sshj.userauth.keyprovider.KeyPairWrapper
 import net.schmizz.sshj.userauth.keyprovider.KeyProvider
+import net.schmizz.keepalive.KeepAliveRunner
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -31,6 +32,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SshConnectorTest {
+    @Test
+    fun `production client detects missing keepalive replies`() {
+        productionSshClient().use { client ->
+            assertTrue(client.connection.keepAlive is KeepAliveRunner)
+            assertEquals(3, (client.connection.keepAlive as KeepAliveRunner).maxAliveCount)
+        }
+    }
+
     @Test
     fun `production Android config resets a pinned provider and resolves P256 signing`() {
         SecurityUtils.setSecurityProvider("BC")
@@ -262,7 +271,7 @@ class SshConnectorTest {
         assertEquals(0, client.socket.soTimeout)
         assertEquals(SshConnector.AUTH_TIMEOUT_MILLIS, client.transport.timeoutMs)
         assertEquals(SshConnector.AUTH_TIMEOUT_MILLIS, client.connection.timeoutMs)
-        assertEquals(30, client.keepAliveSeconds)
+        assertEquals(10, client.keepAliveSeconds)
         connected.close()
     }
 
@@ -478,14 +487,14 @@ class SshConnectorTest {
 
         override fun connect(hostname: String, port: Int) {
             event("$label.connect")
-            check(keepAliveSeconds == 30) { "keepalive must be configured before connect" }
+            check(keepAliveSeconds == 10) { "keepalive must be configured before connect" }
             recordingSocket.soTimeout = timeout
             verify(hostname, port)
         }
 
         override fun connectVia(directConnection: DirectConnection) {
             event("$label.connectVia")
-            check(keepAliveSeconds == 30) { "keepalive must be configured before connectVia" }
+            check(keepAliveSeconds == 10) { "keepalive must be configured before connectVia" }
             verify(directConnection.remoteHost, directConnection.remotePort)
         }
 

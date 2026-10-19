@@ -30,6 +30,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
@@ -659,37 +660,89 @@ class TerminalViewModelTest {
         vmScope.cancel()
     }
 
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     @Test
-    fun `create waits for the new authoritative focus then opens its terminal`() = runBlocking {
-        val vmScope = CoroutineScope(coroutineContext + SupervisorJob())
-        val state = MutableStateFlow<ConnectionState>(ConnectionState.Connected(7, mapOf("work" to session())))
-        val attached = mutableListOf<String>()
-        val first = ClientHarness()
-        val second = ClientHarness()
-        val viewModel = TerminalViewModel(
-            state = state,
-            actions = hierarchyCommands(),
-            attach = { session, pane, _, _, _ ->
-                attached += "$session:$pane"
-                if (pane == "p1") first.lease else second.lease
-            },
-            scope = vmScope,
-            ioDispatcher = Dispatchers.IO,
+    fun `every create shows loading immediately until the new terminal attaches`() = runTest {
+        val creates = listOf<(TerminalViewModel) -> Job>(
+            { it.createSpace("work") },
+            { it.createTab("work", "w1") },
+            { it.splitPane("work", "p1", SplitDirection.Right) },
+            { it.splitPane("work", "p1", SplitDirection.Down) },
         )
-        withTimeout(1_000) { while (attached.isEmpty()) yield() }
-        attached.clear()
+        for (create in creates) {
+            val state = MutableStateFlow<ConnectionState>(ConnectionState.Connected(7, mapOf("work" to session())))
+            val response = CompletableDeferred<Unit>()
+            val replacementReady = CompletableDeferred<Unit>()
+            val first = ClientHarness()
+            val second = ClientHarness()
+            val viewModel = TerminalViewModel(
+                state = state,
+                actions = hierarchyCommands { response.await(); ActionOutcome.Succeeded },
+                attach = { _, pane, _, _, _ ->
+                    if (pane == "p1") first.lease else {
+                        replacementReady.await()
+                        second.lease
+                    }
+                },
+                scope = backgroundScope,
+                ioDispatcher = StandardTestDispatcher(testScheduler),
+            )
+            runCurrent()
+            viewModel.openSwitcher()
+
+            val creation = create(viewModel)
+            assertEquals(true, viewModel.uiState.value.switchingTerminal)
+            assertEquals(false, viewModel.uiState.value.switcherOpen)
+            runCurrent()
+            assertEquals(true, viewModel.uiState.value.switchingTerminal)
+            assertEquals("p1", viewModel.uiState.value.attachmentKey?.paneId)
+
+            response.complete(Unit)
+            runCurrent()
+            assertEquals(true, creation.isCompleted)
+            assertEquals(true, viewModel.uiState.value.switchingTerminal)
+            state.value = ConnectionState.Connected(7, mapOf("work" to session(focusedTab = "t2", focusedPane = "p2")))
+            runCurrent()
+            assertEquals(true, viewModel.uiState.value.switchingTerminal)
+            assertEquals("p1", viewModel.uiState.value.attachmentKey?.paneId)
+            assertEquals(0, first.closeCount.get())
+
+            replacementReady.complete(Unit)
+            runCurrent()
+            assertEquals("p2", viewModel.uiState.value.attachmentKey?.paneId)
+            assertEquals(false, viewModel.uiState.value.switchingTerminal)
+            assertEquals(false, viewModel.uiState.value.switcherOpen)
+            assertEquals(1, first.closeCount.get())
+            viewModel.close()
+        }
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test
+    fun `failed create stops loading and returns to the switcher with an error`() = runTest {
+        val response = CompletableDeferred<ActionOutcome>()
+        val first = ClientHarness()
+        val viewModel = TerminalViewModel(
+            state = MutableStateFlow(ConnectionState.Connected(7, mapOf("work" to session()))),
+            actions = hierarchyCommands { response.await() },
+            attach = { _, _, _, _, _ -> first.lease },
+            scope = backgroundScope,
+            ioDispatcher = StandardTestDispatcher(testScheduler),
+        )
+        runCurrent()
         viewModel.openSwitcher()
 
-        viewModel.createTab("work", "w1").join()
-        assertEquals(true, viewModel.uiState.value.switcherOpen)
-        state.value = ConnectionState.Connected(7, mapOf("work" to session(focusedTab = "t2", focusedPane = "p2")))
-        withTimeout(1_000) { while (attached.isEmpty()) yield() }
-        withTimeout(1_000) { while (viewModel.uiState.value.switcherOpen) yield() }
+        viewModel.createSpace("work")
+        assertEquals(true, viewModel.uiState.value.switchingTerminal)
+        response.completeExceptionally(IOException("create failed"))
+        runCurrent()
 
-        assertEquals(listOf("work:p2"), attached)
-        assertEquals(false, viewModel.uiState.value.switcherOpen)
+        assertEquals(false, viewModel.uiState.value.switchingTerminal)
+        assertEquals(true, viewModel.uiState.value.switcherOpen)
+        assertEquals("create failed", viewModel.uiState.value.message)
+        assertEquals("p1", viewModel.uiState.value.attachmentKey?.paneId)
+        assertEquals(0, first.closeCount.get())
         viewModel.close()
-        vmScope.cancel()
     }
 
     @Test

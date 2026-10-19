@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.captureToImage
@@ -308,6 +309,7 @@ class HierarchySwitcherTest {
 
     @Test
     fun terminal_toolbar_has_the_approved_key_order() {
+        val output = java.io.ByteArrayOutputStream()
         lateinit var emulator: TerminalEmulator
         compose.setContent {
             emulator = remember {
@@ -316,13 +318,13 @@ class HierarchySwitcherTest {
                     initialCols = 80,
                     defaultForeground = Color.White,
                     defaultBackground = Color.Black,
-                    onKeyboardInput = {},
+                    onKeyboardInput = { output.write(it) },
                 )
             }
             MaterialTheme {
                 TerminalToolbar(
                     emulator = emulator,
-                    modifiers = TerminalModifiers(),
+                    modifiers = remember { TerminalModifiers() },
                     selectionActive = false,
                     enabled = true,
                     onToggleSelection = {},
@@ -335,7 +337,7 @@ class HierarchySwitcherTest {
         }
 
         val expected = listOf(
-            "Escape key", "Tab key", "Ctrl modifier", "Alt modifier",
+            "Escape key", "Tab key", "Ctrl modifier", "Alt modifier", "Shift modifier",
             "Home key", "End key", "Remote page up", "Remote page down",
             "Left arrow", "Up arrow", "Down arrow", "Right arrow",
             "Paste clipboard", "Toggle terminal selection", "Copy terminal selection",
@@ -353,6 +355,24 @@ class HierarchySwitcherTest {
         compose.onNodeWithContentDescription("Show keyboard").assertDoesNotExist()
         compose.onNodeWithContentDescription("Control C").assertDoesNotExist()
         compose.onNodeWithContentDescription("Control D").assertDoesNotExist()
+        val shift = compose.onNodeWithContentDescription("Shift modifier")
+        val tab = compose.onNodeWithContentDescription("Tab key")
+        shift.performScrollTo().performClick()
+        shift.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "sticky"))
+        tab.performScrollTo().performClick()
+        shift.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "off"))
+        shift.performScrollTo().performClick().performClick()
+        tab.performScrollTo().performClick().performClick()
+        shift.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "locked"))
+        compose.onNodeWithContentDescription("Ctrl modifier").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Left arrow").performScrollTo().performClick()
+        shift.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "locked"))
+        compose.onNodeWithContentDescription("Ctrl modifier")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "off"))
+        shift.performScrollTo().performClick()
+        tab.performScrollTo().performClick()
+        shift.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "off"))
+        compose.runOnIdle { assertEquals("\u001b[Z\u001b[Z\u001b[Z\u001b[1;6D\t", output.toString()) }
         compose.runOnIdle { (emulator as? AutoCloseable)?.close() }
     }
 
