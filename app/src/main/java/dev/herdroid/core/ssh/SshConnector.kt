@@ -237,6 +237,6 @@ class SshConnector internal constructor(
         const val CONNECT_TIMEOUT_MILLIS = 15_000
         const val AUTH_TIMEOUT_MILLIS = 15_000
         const val COMMAND_TIMEOUT_MILLIS = 30_000L
-        private const val KEEPALIVE_SECONDS = 30
+        private const val KEEPALIVE_SECONDS = 10
     }
 }

@@ -3,6 +3,7 @@ package dev.herdroid.feature.terminal
 import android.content.ClipData
 import android.view.View
 import android.view.ViewTreeObserver
+import android.view.inputmethod.InputMethodManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -73,6 +74,7 @@ fun TerminalSurface(
     var explicitHidePending by remember(attachmentKey) { mutableStateOf(false) }
     var showAfterExplicitHide by remember(attachmentKey) { mutableStateOf(false) }
     val keyboardVisible = viewImeVisible(attachmentKey)
+    val view = LocalView.current
     var selection by remember(attachmentKey) { mutableStateOf<SelectionController?>(null) }
     var selectionActive by remember(attachmentKey) { mutableStateOf(false) }
     val clipboard = LocalClipboard.current
@@ -116,6 +118,12 @@ fun TerminalSurface(
             return
         } else if (!keyboardVisible) {
             terminalShowCompleted = false
+            if (keyboardRequested) {
+                view.findFocus()?.takeIf(View::onCheckIsTextEditor)?.let { editor ->
+                    editor.context.getSystemService(InputMethodManager::class.java)
+                        ?.showSoftInput(editor, 0)
+                }
+            }
             keyboardRequested = true
         }
     }

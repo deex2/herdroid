@@ -110,7 +110,7 @@ fun TerminalScreen(
                     onSendBytes = onSendBytes,
                     onResize = onResize,
                     onScroll = onScroll,
-                    switcherOpen = switcherOpen,
+                    switcherOpen = switcherOpen || loading,
                     restoreKeyboardAfterSwitcher = restoreKeyboardAfterSwitcher,
                     modifier = Modifier.weight(1f),
                     onRetry = onRetry,

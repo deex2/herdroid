@@ -392,11 +392,14 @@ class TerminalViewModel internal constructor(
 
     private fun creationAction(session: String, call: suspend (HierarchyCommands) -> ActionOutcome): Job {
         val pending = PendingCreation(session, focusedKey(session))
+        val generation = beginTerminalSwitch {
+            focusedKey(session)?.let { it != pending.before } == true
+        }
         return action(afterSuccess = {
             pendingCreation = pending
             resolvePendingCreation()
             requestAttach()
-        }, call = call)
+        }, afterFailure = { finishTerminalSwitch(generation, reopenSwitcher = true) }, call = call)
     }
 
     private fun focusedKey(): TerminalKey? = mutableUiState.value.selectedSession?.let(::focusedKey)

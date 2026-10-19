@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.captureToImage
@@ -52,6 +53,7 @@ import dev.herdroid.core.model.Workspace
 import dev.herdroid.session.api.TerminalLease
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -308,6 +310,7 @@ class HierarchySwitcherTest {
 
     @Test
     fun terminal_toolbar_has_the_approved_key_order() {
+        val output = java.io.ByteArrayOutputStream()
         lateinit var emulator: TerminalEmulator
         compose.setContent {
             emulator = remember {
@@ -316,13 +319,13 @@ class HierarchySwitcherTest {
                     initialCols = 80,
                     defaultForeground = Color.White,
                     defaultBackground = Color.Black,
-                    onKeyboardInput = {},
+                    onKeyboardInput = { output.write(it) },
                 )
             }
             MaterialTheme {
                 TerminalToolbar(
                     emulator = emulator,
-                    modifiers = TerminalModifiers(),
+                    modifiers = remember { TerminalModifiers() },
                     selectionActive = false,
                     enabled = true,
                     onToggleSelection = {},
@@ -335,7 +338,7 @@ class HierarchySwitcherTest {
         }
 
         val expected = listOf(
-            "Escape key", "Tab key", "Ctrl modifier", "Alt modifier",
+            "Escape key", "Tab key", "Ctrl modifier", "Alt modifier", "Shift modifier",
             "Home key", "End key", "Remote page up", "Remote page down",
             "Left arrow", "Up arrow", "Down arrow", "Right arrow",
             "Paste clipboard", "Toggle terminal selection", "Copy terminal selection",
@@ -353,6 +356,24 @@ class HierarchySwitcherTest {
         compose.onNodeWithContentDescription("Show keyboard").assertDoesNotExist()
         compose.onNodeWithContentDescription("Control C").assertDoesNotExist()
         compose.onNodeWithContentDescription("Control D").assertDoesNotExist()
+        val shift = compose.onNodeWithContentDescription("Shift modifier")
+        val tab = compose.onNodeWithContentDescription("Tab key")
+        shift.performScrollTo().performClick()
+        shift.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "sticky"))
+        tab.performScrollTo().performClick()
+        shift.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "off"))
+        shift.performScrollTo().performClick().performClick()
+        tab.performScrollTo().performClick().performClick()
+        shift.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "locked"))
+        compose.onNodeWithContentDescription("Ctrl modifier").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Left arrow").performScrollTo().performClick()
+        shift.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "locked"))
+        compose.onNodeWithContentDescription("Ctrl modifier")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "off"))
+        shift.performScrollTo().performClick()
+        tab.performScrollTo().performClick()
+        shift.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "off"))
+        compose.runOnIdle { assertEquals("\u001b[Z\u001b[Z\u001b[Z\u001b[1;6D\t", output.toString()) }
         compose.runOnIdle { (emulator as? AutoCloseable)?.close() }
     }
 
@@ -448,6 +469,83 @@ class HierarchySwitcherTest {
                 androidx.core.view.WindowCompat.setDecorFitsSystemWindows(compose.activity.window, true)
                 compose.activity.window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_UNSPECIFIED)
             }
+        }
+    }
+
+    @Test
+    fun loading_blocks_keyboard_until_replacement_or_failed_create_finishes() {
+        val first = TerminalClientHarness()
+        val replacement = TerminalClientHarness()
+        val client = mutableStateOf(first)
+        val loading = mutableStateOf(false)
+        val switcherOpen = mutableStateOf(false)
+        try {
+            compose.setContent {
+                TerminalScreen(
+                    routeName = "test",
+                    connectionLabel = "Connected",
+                    sessionName = "work",
+                    session = session(),
+                    client = client.value,
+                    onPreviousTab = {},
+                    onNextTab = {},
+                    onOpenSwitcher = {},
+                    loading = loading.value,
+                    switcherOpen = switcherOpen.value,
+                )
+            }
+            repeat(2) { attempt ->
+                compose.waitUntil(5_000) { compose.activity.isImeVisible() }
+                compose.runOnIdle { compose.activity.window.decorView.requestLayout() }
+                compose.waitForIdle()
+                compose.runOnIdle {
+                    assertTrue(compose.activity.textEditor().isAttachedToWindow)
+                    loading.value = true
+                }
+                compose.waitForIdle()
+                compose.onNodeWithText("Opening terminal…").assertIsDisplayed()
+                compose.waitUntil(5_000) { !compose.activity.isImeVisible() }
+                compose.runOnIdle {
+                    assertThrows(NoSuchElementException::class.java) { compose.activity.textEditor() }
+                    compose.activity.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+                    compose.activity.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+                }
+                compose.waitForIdle()
+                compose.runOnIdle {
+                    assertEquals("Loading sent input to the hidden old terminal", "", client.value.stdin.toString())
+                }
+                compose.runOnIdle {
+                    if (attempt == 0) client.value = replacement else switcherOpen.value = true
+                }
+                compose.waitForIdle()
+                compose.runOnIdle {
+                    assertThrows(NoSuchElementException::class.java) { compose.activity.textEditor() }
+                    loading.value = false
+                }
+                if (attempt == 1) {
+                    compose.waitForIdle()
+                    compose.runOnIdle {
+                        assertThrows(NoSuchElementException::class.java) { compose.activity.textEditor() }
+                        switcherOpen.value = false
+                    }
+                }
+                compose.waitUntil(5_000) { compose.activity.isImeVisible() }
+                compose.runOnIdle {
+                    compose.activity.textEditor().onCreateInputConnection(EditorInfo()).apply {
+                        commitText("ready", 1)
+                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+                    }
+                }
+                compose.waitUntil(5_000) { replacement.stdin.toString() == "ready\r" }
+                compose.runOnIdle {
+                    assertEquals("ready\r", replacement.stdin.toString())
+                    replacement.stdin.reset()
+                    assertEquals("", first.stdin.toString())
+                }
+            }
+        } finally {
+            first.close()
+            replacement.close()
         }
     }
 

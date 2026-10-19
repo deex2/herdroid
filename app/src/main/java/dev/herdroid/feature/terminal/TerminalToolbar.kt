@@ -34,17 +34,21 @@ class TerminalModifiers : ModifierManager {
         private set
     var altState by mutableStateOf(State.OFF)
         private set
+    var shiftState by mutableStateOf(State.OFF)
+        private set
 
     val mask: Int
-        get() = (if (isCtrlActive()) CTRL_MASK else 0) or (if (isAltActive()) ALT_MASK else 0)
+        get() = (if (isCtrlActive()) CTRL_MASK else 0) or
+            (if (isAltActive()) ALT_MASK else 0) or (if (isShiftActive()) SHIFT_MASK else 0)
 
     override fun isCtrlActive() = ctrlState != State.OFF
     override fun isAltActive() = altState != State.OFF
-    override fun isShiftActive() = false
+    override fun isShiftActive() = shiftState != State.OFF
 
     override fun clearTransients() {
         if (ctrlState == State.STICKY) ctrlState = State.OFF
         if (altState == State.STICKY) altState = State.OFF
+        if (shiftState == State.STICKY) shiftState = State.OFF
     }
 
     fun toggleCtrl() {
@@ -55,6 +59,10 @@ class TerminalModifiers : ModifierManager {
         altState = altState.next()
     }
 
+    fun toggleShift() {
+        shiftState = shiftState.next()
+    }
+
     private fun State.next() = when (this) {
         State.OFF -> State.STICKY
         State.STICKY -> State.LOCKED
@@ -62,6 +70,7 @@ class TerminalModifiers : ModifierManager {
     }
 
     private companion object {
+        const val SHIFT_MASK = 1
         const val ALT_MASK = 2
         const val CTRL_MASK = 4
     }
@@ -96,6 +105,7 @@ fun TerminalToolbar(
         TerminalButton("Tab", "Tab key", enabled = enabled) { sendKey(VTermKey.TAB) }
         ModifierButton("Ctrl", modifiers.ctrlState, enabled, modifiers::toggleCtrl)
         ModifierButton("Alt", modifiers.altState, enabled, modifiers::toggleAlt)
+        ModifierButton("Shift", modifiers.shiftState, enabled, modifiers::toggleShift)
         TerminalButton("Home", "Home key", enabled = enabled) { sendKey(VTermKey.HOME) }
         TerminalButton("End", "End key", enabled = enabled) { sendKey(VTermKey.END) }
         TerminalButton("PgUp", "Remote page up", enabled = enabled, onClick = onPageUp)
