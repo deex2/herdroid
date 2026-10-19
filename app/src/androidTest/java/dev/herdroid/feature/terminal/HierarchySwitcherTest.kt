@@ -53,6 +53,7 @@ import dev.herdroid.core.model.Workspace
 import dev.herdroid.session.api.TerminalLease
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -468,6 +469,83 @@ class HierarchySwitcherTest {
                 androidx.core.view.WindowCompat.setDecorFitsSystemWindows(compose.activity.window, true)
                 compose.activity.window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_UNSPECIFIED)
             }
+        }
+    }
+
+    @Test
+    fun loading_blocks_keyboard_until_replacement_or_failed_create_finishes() {
+        val first = TerminalClientHarness()
+        val replacement = TerminalClientHarness()
+        val client = mutableStateOf(first)
+        val loading = mutableStateOf(false)
+        val switcherOpen = mutableStateOf(false)
+        try {
+            compose.setContent {
+                TerminalScreen(
+                    routeName = "test",
+                    connectionLabel = "Connected",
+                    sessionName = "work",
+                    session = session(),
+                    client = client.value,
+                    onPreviousTab = {},
+                    onNextTab = {},
+                    onOpenSwitcher = {},
+                    loading = loading.value,
+                    switcherOpen = switcherOpen.value,
+                )
+            }
+            repeat(2) { attempt ->
+                compose.waitUntil(5_000) { compose.activity.isImeVisible() }
+                compose.runOnIdle { compose.activity.window.decorView.requestLayout() }
+                compose.waitForIdle()
+                compose.runOnIdle {
+                    assertTrue(compose.activity.textEditor().isAttachedToWindow)
+                    loading.value = true
+                }
+                compose.waitForIdle()
+                compose.onNodeWithText("Opening terminal…").assertIsDisplayed()
+                compose.waitUntil(5_000) { !compose.activity.isImeVisible() }
+                compose.runOnIdle {
+                    assertThrows(NoSuchElementException::class.java) { compose.activity.textEditor() }
+                    compose.activity.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+                    compose.activity.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+                }
+                compose.waitForIdle()
+                compose.runOnIdle {
+                    assertEquals("Loading sent input to the hidden old terminal", "", client.value.stdin.toString())
+                }
+                compose.runOnIdle {
+                    if (attempt == 0) client.value = replacement else switcherOpen.value = true
+                }
+                compose.waitForIdle()
+                compose.runOnIdle {
+                    assertThrows(NoSuchElementException::class.java) { compose.activity.textEditor() }
+                    loading.value = false
+                }
+                if (attempt == 1) {
+                    compose.waitForIdle()
+                    compose.runOnIdle {
+                        assertThrows(NoSuchElementException::class.java) { compose.activity.textEditor() }
+                        switcherOpen.value = false
+                    }
+                }
+                compose.waitUntil(5_000) { compose.activity.isImeVisible() }
+                compose.runOnIdle {
+                    compose.activity.textEditor().onCreateInputConnection(EditorInfo()).apply {
+                        commitText("ready", 1)
+                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+                    }
+                }
+                compose.waitUntil(5_000) { replacement.stdin.toString() == "ready\r" }
+                compose.runOnIdle {
+                    assertEquals("ready\r", replacement.stdin.toString())
+                    replacement.stdin.reset()
+                    assertEquals("", first.stdin.toString())
+                }
+            }
+        } finally {
+            first.close()
+            replacement.close()
         }
     }
 
