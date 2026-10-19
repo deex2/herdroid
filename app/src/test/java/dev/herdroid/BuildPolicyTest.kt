@@ -13,8 +13,8 @@ class BuildPolicyTest {
     fun release_signing_is_explicit_secret_driven_and_versioned() {
         val build = repository.resolve("app/build.gradle.kts").readText()
 
-        assertTrue(build.contains("versionCode = 9"))
-        assertTrue(build.contains("versionName = \"0.1.8\""))
+        assertTrue(build.contains("versionCode = 10"))
+        assertTrue(build.contains("versionName = \"0.1.9\""))
         assertTrue(build.contains("applicationIdSuffix = \".debug\""))
         assertTrue(build.contains("HERDROID_SIGNING_STORE_FILE"))
         assertTrue(build.contains("HERDROID_SIGNING_PASSWORD"))
